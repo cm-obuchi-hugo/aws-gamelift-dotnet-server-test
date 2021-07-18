@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 
 using Aws.GameLift.Server;
+using Aws.GameLift.Server.Model;
 
 namespace AWSGameLiftServerTest
 {
@@ -19,6 +20,13 @@ namespace AWSGameLiftServerTest
             //Identify port number (hard coded here for simplicity) the game server is listening on for player connections
             var listeningPort = 7777;
 
+            string[] strings = System.Environment.GetCommandLineArgs();
+
+            foreach (var str in strings)
+            {
+                Console.WriteLine(str);
+            }
+
             //InitSDK will establish a local connection with GameLift's agent to enable further communication.
             Console.WriteLine(GameLiftServerAPI.GetSdkVersion().Result);
 
@@ -26,37 +34,10 @@ namespace AWSGameLiftServerTest
             if (initSDKOutcome.Success)
             {
                 ProcessParameters processParameters = new ProcessParameters(
-                    (gameSession) =>
-                    {
-                        //When a game session is created, GameLift sends an activation request to the game server and passes along the game session object containing game properties and other settings.
-                        //Here is where a game server should take action based on the game session object.
-                        //Once the game server is ready to receive incoming player connections, it should invoke GameLiftServerAPI.ActivateGameSession()
-                        GameLiftServerAPI.ActivateGameSession();
-                    },
-                    (updateGameSession) =>
-                    {
-                        //When a game session is updated (e.g. by FlexMatch backfill), GameLiftsends a request to the game
-                        //server containing the updated game session object.  The game server can then examine the provided
-                        //matchmakerData and handle new incoming players appropriately.
-                        //updateReason is the reason this update is being supplied.
-                    },
-                    () =>
-                    {
-                        //OnProcessTerminate callback. GameLift will invoke this callback before shutting down an instance hosting this game server.
-                        //It gives this game server a chance to save its state, communicate with services, etc., before being shut down.
-                        //In this case, we simply tell GameLift we are indeed going to shutdown.
-                        GameLiftServerAPI.ProcessEnding();
-                    },
-                    () =>
-                    {
-                        //This is the HealthCheck callback.
-                        //GameLift will invoke this callback every 60 seconds or so.
-                        //Here, a game server might want to check the health of dependencies and such.
-                        //Simply return true if healthy, false otherwise.
-                        //The game server has 60 seconds to respond with its health status. GameLift will default to 'false' if the game server doesn't respond in time.
-                        //In this case, we're always healthy!
-                        return true;
-                    },
+                    this.OnStartGameSession,
+                    this.OnUpdateGameSession,
+                    this.OnProcessTerminate,
+                    this.OnHealthCheck,
                     listeningPort, //This game server tells GameLift that it will listen on port 7777 for incoming player connections.
                     new LogParameters(new List<string>()
                     {
@@ -83,6 +64,41 @@ namespace AWSGameLiftServerTest
                 IsAlive = true;
                 Console.WriteLine("InitSDK failure : " + initSDKOutcome.Error.ToString());
             }
+        }
+
+        void OnStartGameSession(GameSession gameSession)
+        {
+            //When a game session is created, GameLift sends an activation request to the game server and passes along the game session object containing game properties and other settings.
+            //Here is where a game server should take action based on the game session object.
+            //Once the game server is ready to receive incoming player connections, it should invoke GameLiftServerAPI.ActivateGameSession()
+            GameLiftServerAPI.ActivateGameSession();
+        }
+
+        void OnUpdateGameSession(UpdateGameSession updateGameSession)
+        {
+            //When a game session is updated (e.g. by FlexMatch backfill), GameLiftsends a request to the game
+            //server containing the updated game session object.  The game server can then examine the provided
+            //matchmakerData and handle new incoming players appropriately.
+            //updateReason is the reason this update is being supplied.
+        }
+
+        void OnProcessTerminate()
+        {
+            //OnProcessTerminate callback. GameLift will invoke this callback before shutting down an instance hosting this game server.
+            //It gives this game server a chance to save its state, communicate with services, etc., before being shut down.
+            //In this case, we simply tell GameLift we are indeed going to shutdown.
+            GameLiftServerAPI.ProcessEnding();
+        }
+        
+        bool OnHealthCheck()
+        {
+            //This is the HealthCheck callback.
+            //GameLift will invoke this callback every 60 seconds or so.
+            //Here, a game server might want to check the health of dependencies and such.
+            //Simply return true if healthy, false otherwise.
+            //The game server has 60 seconds to respond with its health status. GameLift will default to 'false' if the game server doesn't respond in time.
+            //In this case, we're always healthy!
+            return true;
         }
 
         void OnApplicationQuit()
