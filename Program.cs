@@ -7,6 +7,12 @@ namespace AWSGameLiftServerTest
         static void Main(string[] args)
         {
             server.Start();
+
+            while(true)
+            {
+                // server logic;
+                if(!server.IsAlive) break;
+            }
         }
     }
 }
