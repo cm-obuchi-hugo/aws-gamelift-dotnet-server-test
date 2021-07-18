@@ -7,6 +7,7 @@ namespace AWSGameLiftServerTest
 {
     class GameServer
     {
+        public bool IsAlive { get; private set; } = false;
         public GameServer()
         {
 
@@ -19,6 +20,8 @@ namespace AWSGameLiftServerTest
             var listeningPort = 7777;
 
             //InitSDK will establish a local connection with GameLift's agent to enable further communication.
+            Console.WriteLine(GameLiftServerAPI.GetSdkVersion().Result);
+
             var initSDKOutcome = GameLiftServerAPI.InitSDK();
             if (initSDKOutcome.Success)
             {
@@ -66,15 +69,18 @@ namespace AWSGameLiftServerTest
                 var processReadyOutcome = GameLiftServerAPI.ProcessReady(processParameters);
                 if (processReadyOutcome.Success)
                 {
+                    IsAlive = true;
                     Console.WriteLine("ProcessReady success.");
                 }
                 else
                 {
+                    IsAlive = false;
                     Console.WriteLine("ProcessReady failure : " + processReadyOutcome.Error.ToString());
                 }
             }
             else
             {
+                IsAlive = true;
                 Console.WriteLine("InitSDK failure : " + initSDKOutcome.Error.ToString());
             }
         }
@@ -83,6 +89,8 @@ namespace AWSGameLiftServerTest
         {
             //Make sure to call GameLiftServerAPI.Destroy() when the application quits. This resets the local connection with GameLift's agent.
             GameLiftServerAPI.Destroy();
+
+            IsAlive = false;
         }
     }
 }
