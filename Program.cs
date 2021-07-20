@@ -8,11 +8,12 @@ namespace AWSGameLiftServerTest
         {
             server.Start();
 
-            while(true)
+            while(server.IsAlive)
             {
-                // server logic;
-                if(!server.IsAlive) break;
+
             }
+
+            Console.WriteLine("Program ends.");
         }
     }
 }

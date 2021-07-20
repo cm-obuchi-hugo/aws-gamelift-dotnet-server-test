@@ -12,6 +12,7 @@ namespace AWSGameLiftServerTest
 {
     class GameServer
     {
+        public readonly System.Text.Encoding Encoder = System.Text.Encoding.UTF8; 
         private TcpListener listener = null;
         private Thread listenerThread = null;
 
@@ -79,6 +80,7 @@ namespace AWSGameLiftServerTest
             //When a game session is created, GameLift sends an activation request to the game server and passes along the game session object containing game properties and other settings.
             //Here is where a game server should take action based on the game session object.
             //Once the game server is ready to receive incoming player connections, it should invoke GameLiftServerAPI.ActivateGameSession()
+            Console.WriteLine($"Server : OnStartGameSession() called");
             GameLiftServerAPI.ActivateGameSession();
         }
 
@@ -88,6 +90,7 @@ namespace AWSGameLiftServerTest
             //server containing the updated game session object.  The game server can then examine the provided
             //matchmakerData and handle new incoming players appropriately.
             //updateReason is the reason this update is being supplied.
+            Console.WriteLine($"Server : OnUpdateGameSession() called");
         }
 
         void OnProcessTerminate()
@@ -95,6 +98,7 @@ namespace AWSGameLiftServerTest
             //OnProcessTerminate callback. GameLift will invoke this callback before shutting down an instance hosting this game server.
             //It gives this game server a chance to save its state, communicate with services, etc., before being shut down.
             //In this case, we simply tell GameLift we are indeed going to shutdown.
+            Console.WriteLine($"Server : OnProcessTerminate() called");
             GameLiftServerAPI.ProcessEnding();
         }
 
@@ -106,6 +110,7 @@ namespace AWSGameLiftServerTest
             //Simply return true if healthy, false otherwise.
             //The game server has 60 seconds to respond with its health status. GameLift will default to 'false' if the game server doesn't respond in time.
             //In this case, we're always healthy!
+            Console.WriteLine($"Server : OnHealthCheck() called");
             return true;
         }
 
@@ -137,12 +142,14 @@ namespace AWSGameLiftServerTest
 
                 NetworkStream stream = client.GetStream();
 
-                byte[] msg = System.Text.Encoding.UTF8.GetBytes("Hello Client, this is Server");
+                byte[] msg = Encoder.GetBytes("Hello Client, this is Server.");
                 stream.Write(msg);
 
+                msg = new byte[256];
                 while (stream.Read(msg) > 0)
                 {
-                    Console.WriteLine($"From Client : {msg}");
+                    string str = Encoder.GetString(msg);
+                    Console.WriteLine($"From Client : {str}");
 
                     client.Close();
                     break;
