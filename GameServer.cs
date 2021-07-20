@@ -57,8 +57,7 @@ namespace AWSGameLiftServerTest
                     IsAlive = true;
 
                     // Create a TCP listener(in a listener thread) from port when when ProcessReady() returns success
-                    listener = TcpListener.Create(listeningPort);
-
+                    LaunchListenerThread(listeningPort);
 
                     Console.WriteLine("ProcessReady success.");
                 }
