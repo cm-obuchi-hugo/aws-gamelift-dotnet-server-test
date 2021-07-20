@@ -1,6 +1,10 @@
 using System;
 using System.Collections.Generic;
 
+using System.Threading;
+using System.Net;
+using System.Net.Sockets;
+
 using Aws.GameLift.Server;
 using Aws.GameLift.Server.Model;
 
@@ -8,7 +12,13 @@ namespace AWSGameLiftServerTest
 {
     class GameServer
     {
+        private TcpListener listener = null;
+        private Thread listenerThread = null;
+
+        private Dictionary<int, string> playerSessions;
+
         public bool IsAlive { get; private set; } = false;
+
         public GameServer()
         {
 
@@ -19,13 +29,6 @@ namespace AWSGameLiftServerTest
         {
             //Identify port number (hard coded here for simplicity) the game server is listening on for player connections
             var listeningPort = 7777;
-
-            string[] strings = System.Environment.GetCommandLineArgs();
-
-            foreach (var str in strings)
-            {
-                Console.WriteLine(str);
-            }
 
             //InitSDK will establish a local connection with GameLift's agent to enable further communication.
             Console.WriteLine(GameLiftServerAPI.GetSdkVersion().Result);
@@ -50,7 +53,13 @@ namespace AWSGameLiftServerTest
                 var processReadyOutcome = GameLiftServerAPI.ProcessReady(processParameters);
                 if (processReadyOutcome.Success)
                 {
+                    // Set Server to alive when ProcessReady() returns success
                     IsAlive = true;
+
+                    // Create a TCP listener(in a listener thread) from port when when ProcessReady() returns success
+                    listener = TcpListener.Create(listeningPort);
+
+
                     Console.WriteLine("ProcessReady success.");
                 }
                 else
@@ -89,7 +98,7 @@ namespace AWSGameLiftServerTest
             //In this case, we simply tell GameLift we are indeed going to shutdown.
             GameLiftServerAPI.ProcessEnding();
         }
-        
+
         bool OnHealthCheck()
         {
             //This is the HealthCheck callback.
@@ -99,6 +108,48 @@ namespace AWSGameLiftServerTest
             //The game server has 60 seconds to respond with its health status. GameLift will default to 'false' if the game server doesn't respond in time.
             //In this case, we're always healthy!
             return true;
+        }
+
+        void LaunchListenerThread(int port)
+        {
+            listenerThread = new Thread(() =>
+                {
+                    Listen(port);
+                });
+
+            listenerThread.Start();
+
+            Console.WriteLine($"Server : Listener thread is created and started");
+        }
+
+        void Listen(int port)
+        {
+            listener = TcpListener.Create(port);
+            listener.Start();
+
+            Console.WriteLine($"Server : Start listening port {port}");
+
+            while (true)
+            {
+                TcpClient client = listener.AcceptTcpClient();
+                IPEndPoint endPoint = client.Client.RemoteEndPoint as IPEndPoint;
+
+                Console.WriteLine($"Server : Accepted client with IP address {endPoint.Address}");
+
+                NetworkStream stream = client.GetStream();
+
+                byte[] msg = System.Text.Encoding.UTF8.GetBytes("Hello Client, this is Server");
+                stream.Write(msg);
+
+                while (stream.Read(msg) > 0)
+                {
+                    Console.WriteLine($"From Client : {msg}");
+
+                    client.Close();
+                    break;
+                }
+
+            }
         }
 
         void OnApplicationQuit()
