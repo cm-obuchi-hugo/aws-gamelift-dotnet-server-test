@@ -12,12 +12,16 @@ namespace AWSGameLiftServerTest
 {
     class GameServer
     {
+        // A UTF-8 encoder to process byte[] <-> string conversion
         public readonly System.Text.Encoding Encoder = System.Text.Encoding.UTF8; 
+        
+        // TCP lisenter has it's own thread
         private TcpListener listener = null;
         private Thread listenerThread = null;
 
         private Dictionary<int, string> playerSessions;
 
+        // A instance's status flag of this class 
         public bool IsAlive { get; private set; } = false;
 
         public GameServer()
@@ -114,6 +118,7 @@ namespace AWSGameLiftServerTest
             return true;
         }
 
+        // A method creates thread for listener
         void LaunchListenerThread(int port)
         {
             listenerThread = new Thread(() =>
@@ -126,6 +131,9 @@ namespace AWSGameLiftServerTest
             Console.WriteLine($"Server : Listener thread is created and started");
         }
 
+        // A method listens the port.
+        // When client connects : 
+        // 1) Send msg to client -> 2) Wait msg from client -> 3) Close then connection and break
         void Listen(int port)
         {
             listener = TcpListener.Create(port);
@@ -135,22 +143,27 @@ namespace AWSGameLiftServerTest
 
             while (true)
             {
+                // TcpClient.AccecptTcpClient() blocks
                 TcpClient client = listener.AcceptTcpClient();
-                IPEndPoint endPoint = client.Client.RemoteEndPoint as IPEndPoint;
 
+                // Print client's IP address
+                IPEndPoint endPoint = client.Client.RemoteEndPoint as IPEndPoint;
                 Console.WriteLine($"Server : Accepted client with IP address {endPoint.Address}");
 
                 NetworkStream stream = client.GetStream();
 
+                // Get the binary form of a string message and send it
                 byte[] msg = Encoder.GetBytes("Hello Client, this is Server.");
                 stream.Write(msg);
 
+                // Create a binary buffer to receive message from client
                 msg = new byte[256];
                 while (stream.Read(msg) > 0)
                 {
                     string str = Encoder.GetString(msg);
                     Console.WriteLine($"From Client : {str}");
 
+                    // Close the connection when message is received
                     client.Close();
                     break;
                 }
